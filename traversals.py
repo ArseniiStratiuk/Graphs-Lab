@@ -493,7 +493,7 @@ if __name__ == "__main__":
     import numpy as np
 
 
-    def time_decorator(func):
+    def time_decorator(func: callable) -> callable:
         """
         Measure the time taken for a function to execute.
         """
@@ -547,9 +547,10 @@ if __name__ == "__main__":
                 _, elapsed_time = algo_func(graph_data["dict"], 0)
 
             results[graph_name][algo_name] = elapsed_time
+            print(f"    Time taken: {elapsed_time:.6f} seconds")
 
 
-    def plot_results(results):
+    def plot_results(results: dict):
         """
         Plot the results of the algorithms.
         """
