@@ -15,10 +15,13 @@ def read_incidence_matrix(filename: str) -> list[list]:
 
     edges = []
     vertices = set()
+    directed = False
 
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             line = line.strip()
+            if 'digraph' in line:
+                directed = True
             if '->' in line:
                 parts = line.split('->')
                 edges.append((int(parts[0].strip()), int(parts[1].strip(';'))))
@@ -30,11 +33,15 @@ def read_incidence_matrix(filename: str) -> list[list]:
     matrix = [[0] * edge_count for _ in range(vertices_count)]
 
     for edge_index, (x, y) in enumerate(edges):
-        if x == y:
-            matrix[x][edge_index] = 2
+        if directed:
+            if x == y:
+                matrix[x][edge_index] = 2
+            else:
+                matrix[x][edge_index] = 1
+                matrix[y][edge_index] = -1
         else:
             matrix[x][edge_index] = 1
-            matrix[y][edge_index] = -1
+            matrix[y][edge_index] = 1
 
     return matrix
 
@@ -66,6 +73,7 @@ def read_adjacency_matrix(filename: str) -> list[list]:
 
     for x, y in edges:
         matrix[x][y] = 1
+        matrix[y][x] = 1
 
     return matrix
 
@@ -80,10 +88,13 @@ def read_adjacency_dict(filename: str) -> dict[int, list[int]]:
     """
 
     dictionary = {}
+    directed = False
 
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             line = line.strip()
+            if 'digraph' in line:
+                directed = True
             if '->' in line:
                 parts = line.split('->')
                 x, y = int(parts[0]), int(parts[1].strip(';'))
@@ -94,6 +105,8 @@ def read_adjacency_dict(filename: str) -> dict[int, list[int]]:
 
                 if y not in dictionary:
                     dictionary[y] = []
+                    if not directed:
+                        dictionary[y].append(x)
 
     return dictionary
 
