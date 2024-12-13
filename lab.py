@@ -4,7 +4,7 @@ Depth First Search (DFS) and Breadth First Search (BFS) algorithms.
 """
 
 
-def read_incidence_matrix(filename: str) -> list[list]:
+def read_incidence_matrix(filename: str) -> list[list[int]]:
     """
     Read the incidence matrix from a file.
     
@@ -19,12 +19,15 @@ def read_incidence_matrix(filename: str) -> list[list]:
     """
     edges = []
     vertices = set()
+    directed = False
 
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             line = line.strip()
-            if '->' in line:
-                parts = line.split('->')
+            if 'digraph' in line:
+                directed = True
+            if '->' in line or '--' in line:
+                parts = line.split('->' if '->' in line else '--')
                 edges.append((int(parts[0].strip()), int(parts[1].strip(';'))))
                 vertices.update([int(parts[0].strip()), int(parts[1].strip(';'))])
 
@@ -34,16 +37,20 @@ def read_incidence_matrix(filename: str) -> list[list]:
     matrix = [[0] * edge_count for _ in range(vertices_count)]
 
     for edge_index, (x, y) in enumerate(edges):
-        if x == y:
-            matrix[x][edge_index] = 2
+        if directed:
+            if x == y:
+                matrix[x][edge_index] = 2
+            else:
+                matrix[x][edge_index] = 1
+                matrix[y][edge_index] = -1
         else:
             matrix[x][edge_index] = 1
-            matrix[y][edge_index] = -1
+            matrix[y][edge_index] = 1
 
     return matrix
 
 
-def read_adjacency_matrix(filename: str) -> list[list]:
+def read_adjacency_matrix(filename: str) -> list[list[int]]:
     """
     Read the adjacency matrix from a file.
     
@@ -58,12 +65,15 @@ def read_adjacency_matrix(filename: str) -> list[list]:
     """
     edges = []
     nodes = set()
+    directed = False
 
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             line = line.strip()
-            if '->' in line:
-                parts = line.split('->')
+            if 'digraph' in line:
+                directed = True
+            if '->' in line or '--' in line:
+                parts = line.split('->' if '->' in line else '--')
                 edges.append((int(parts[0]), int(parts[1].strip(';'))))
 
     for edge in edges:
@@ -74,6 +84,8 @@ def read_adjacency_matrix(filename: str) -> list[list]:
 
     for x, y in edges:
         matrix[x][y] = 1
+        if not directed:
+            matrix[y][x] = 1
 
     return matrix
 
@@ -92,20 +104,25 @@ def read_adjacency_dict(filename: str) -> dict[int, list[int]]:
     {0: [1, 2], 1: [0, 2], 2: [0, 1]}
     """
     dictionary = {}
+    directed = False
 
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             line = line.strip()
-            if '->' in line:
-                parts = line.split('->')
+            if 'digraph' in line:
+                directed = True
+            if '->' in line or '--' in line:
+                parts = line.split('->' if '->' in line else '--')
                 x, y = int(parts[0]), int(parts[1].strip(';'))
 
                 if x not in dictionary:
                     dictionary[x] = []
                 dictionary[x].append(y)
 
-                if y not in dictionary:
-                    dictionary[y] = []
+                if not directed:
+                    if y not in dictionary:
+                        dictionary[y] = []
+                    dictionary[y].append(x)
 
     return dictionary
 
@@ -470,3 +487,83 @@ def adjacency_dict_radius(graph: dict[int, list[int]]) -> int:
 if __name__ == "__main__":
     import doctest
     print(doctest.testmod())
+
+    import time
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+
+    def time_decorator(func):
+        """
+        Measure the time taken for a function to execute.
+        """
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            result = func(*args, **kwargs)
+            elapsed_time = time.time() - start_time
+            return result, elapsed_time
+        return wrapper
+
+
+    algorithms = {
+        "Iterative DFS (Dict)": time_decorator(iterative_adjacency_dict_dfs),
+        "Iterative DFS (Matrix)": time_decorator(iterative_adjacency_matrix_dfs),
+        "Recursive DFS (Dict)": time_decorator(recursive_adjacency_dict_dfs),
+        "Recursive DFS (Matrix)": time_decorator(recursive_adjacency_matrix_dfs),
+        "Iterative BFS (Dict)": time_decorator(iterative_adjacency_dict_bfs),
+        "Iterative BFS (Matrix)": time_decorator(iterative_adjacency_matrix_bfs),
+        "Recursive BFS (Dict)": time_decorator(recursive_adjacency_dict_bfs),
+        "Recursive BFS (Matrix)": time_decorator(recursive_adjacency_matrix_bfs),
+    }
+
+    sample_graphs = {
+        "Small Graph": {
+            "matrix": [[0, 1, 1], [1, 0, 1], [1, 1, 0]],
+            "dict": {0: [1, 2], 1: [0, 2], 2: [0, 1]}
+        },
+        "Medium Graph": {
+            "matrix": np.random.randint(0, 2, (450, 450)).tolist(),
+            "dict": {i: [j for j in range(450) if i != j and
+                         np.random.rand() > 0.5] for i in range(450)}
+        },
+        "Large Graph": {
+            "matrix": np.random.randint(0, 2, (900, 900)).tolist(),
+            "dict": {i: [j for j in range(900) if i != j and
+                         np.random.rand() > 0.5] for i in range(900)}
+        },
+    }
+
+    results = {}
+
+    for graph_name, graph_data in sample_graphs.items():
+        print(f"Analyzing {graph_name}...")
+        results[graph_name] = {}
+
+        for algo_name, algo_func in algorithms.items():
+            print(f"  Running {algo_name}...")
+            if "Matrix" in algo_name:
+                _, elapsed_time = algo_func(graph_data["matrix"], 0)
+            else:
+                _, elapsed_time = algo_func(graph_data["dict"], 0)
+
+            results[graph_name][algo_name] = elapsed_time
+
+
+    def plot_results(results):
+        """
+        Plot the results of the algorithms.
+        """
+        for graph_name, timings in results.items():
+            plt.figure(figsize=(10, 6))
+            algorithms = list(timings.keys())
+            times = list(timings.values())
+
+            plt.barh(algorithms, times, color="skyblue")
+            plt.xlabel("Time (seconds)")
+            plt.ylabel("Algorithms")
+            plt.title(f"Algorithm Performance on {graph_name}")
+            plt.tight_layout()
+            plt.show()
+
+
+    plot_results(results)
